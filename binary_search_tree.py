@@ -344,27 +344,18 @@ class BinarySearchTree:
                         root.parent.right = None
                 return True
 
-            # Case 2a: Root has only one subtree
-            elif root.left and not root.right:
+            elif (root.left and not root.right) or (root.right and not root.left):
+                # Case 2a: Root has only one subtree
+                child = root.left if root.left is not None else root.right
                 if root == self.root:
-                    self.root = root.left
+                    self.root = child
                 else:
-                    root.left.parent = root.parent
-                    if root.left.value > root.parent.value:
-                        root.parent.right = root.left
+                    child.parent = root.parent
+                    if child.value > root.parent.value:
+                        root.parent.right = child
                     else:
-                        root.parent.left = root.left
+                        root.parent.left = child
 
-            # Case 2b: Root has only one subtree
-            elif root.right and not root.left:
-                if root == self.root:
-                    self.root = root.right
-                else:
-                    root.right.parent = root.parent
-                    if root.right.value > root.parent.value:
-                        root.parent.right = root.right
-                    else:
-                        root.parent.left = root.right
 
             elif root.left and root.right:  # Case 3: Root hss two children
                 if not root.right.left:  # Case 3a: Right Subtree has no left branch
