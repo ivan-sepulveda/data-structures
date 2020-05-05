@@ -1,17 +1,4 @@
-def pprint_tree(node, _prefix="", _last=True):
-    print(_prefix, "`- " if _last else "|- ", node.value, sep="")
-    _prefix += "   " if _last else "|  "
-    child_count = 0
-    kids = []
-    for node in [node.left, node.right]:
-        if node is not None:
-            child_count += 1
-            kids.append(node)
-    for i, child in enumerate(kids):
-        _last = i == (child_count - 1)
-        if child is not None:
-            pprint_tree(child, _prefix, _last)
-
+import random
 
 class Node:
     """Node: The components of a Binary Search Tree, sometimes referred to as leaves.
@@ -25,11 +12,9 @@ class Node:
         value (Node): The first/top Node in our BST.
 
     """
-    def __init__(self, value):
-        self.left = None
-        self.right = None
+    def __init__(self, value, parent=None):
+        self.left, self.right, self.parent = None, None, parent
         self.value = value
-        self.children = [self.left, self.right]
 
 
 class BinarySearchTree:
@@ -71,6 +56,47 @@ class BinarySearchTree:
 
     def length(self):
         return self.size
+
+    def min(self, recursive=True, return_value=False):
+        if not self.root:
+            return None
+        elif recursive:
+            return self._min(self.root, True, return_value=return_value)
+        elif not recursive:
+            return self._min(self.root, False, return_value=return_value)
+
+    def _min(self, root, recursive=True, return_value=False):
+        if not root:
+            return None
+        elif recursive:
+            if root.left:
+                return self._min(root.left, return_value=return_value)
+            else:
+                return root
+
+    def pprint_tree(self, _prefix="", _last=True):
+        if not self.root:
+            return
+        self._pprint_tree(self.root, _prefix, _last)
+
+    def _pprint_tree(self, node, _prefix="", _last=True):
+        if not self.root:
+            return
+        try:
+            print(_prefix, "`- " if _last else "|- ", node.value, sep="")
+        except AttributeError:
+            print("This node is bad: {}".format(node))
+        _prefix += "   " if _last else "|  "
+        child_count = 0
+        kids = []
+        for node in [node.right, node.left]:
+            if node is not None:
+                child_count += 1
+                kids.append(node)
+        for i, child in enumerate(kids):
+            _last = i == (child_count - 1)
+            if child is not None:
+                self._pprint_tree(child, _prefix, _last)
 
     def print_tree(self, traversal=1):
         """Allows user to print this tree in any of the following orders.
@@ -126,13 +152,13 @@ class BinarySearchTree:
     def _recursive_insert(self, root, value):
         if value < root.value:
             if not root.left:
-                root.left = Node(value)
+                root.left = Node(value, parent=root)
                 self.size += 1
             else:
                 self._recursive_insert(root=root.left, value=value)
         else:
             if not root.right:
-                root.right = Node(value)
+                root.right = Node(value, parent=root)
                 self.size += 1
             else:
                 self._recursive_insert(root=root.right, value=value)
@@ -153,20 +179,47 @@ class BinarySearchTree:
             if value < current.value:
                 if current.left is None:
                     current.left = Node(value)
+                    current.right.parent = current
                     break
                 else:
                     current = current.left
             else:
                 if current.right is None:
                     current.right = Node(value)
+                    current.right.parent = current
                     break
                 else:
                     current = current.right
 
+    def get_level(self, level_requested):
+        """ Args:
+            level_requested (int): The requested level (nodes at this height)"""
+
+        if not self.root:
+            return []
+        else:
+            return self._get_level(self.root, level_requested, current_level=1)
+
+    def _get_level(self, root, level_requested, current_level=0):
+        """ Args:
+            traversal (int): The requested order, In-order by default.
+                traversal =  1  --> In-order
+                traversal =  0  --> Pre-order
+                traversal = -1  --> Post-order"""
+
+        if not self.root:
+            return []
+        elif not root:
+            return []
+        elif current_level == level_requested:
+            return [root.value]
+        elif current_level < level_requested:
+            left_results = self._get_level(root.left, level_requested=level_requested, current_level=current_level+1)
+            right_results = self._get_level(root.right, level_requested=level_requested, current_level=current_level+1)
+            return left_results + right_results
 
     def list_nodes(self, traversal=1):
         """ Args:
-            root: current node
             traversal (int): The requested order, In-order by default.
                 traversal =  1  --> In-order
                 traversal =  0  --> Pre-order
@@ -177,7 +230,7 @@ class BinarySearchTree:
         else:
             return self._list_nodes(self.root, traversal=traversal)
 
-    def _list_nodes(self, root, traversal):
+    def _list_nodes(self, root, traversal=1):
         listed_nodes, current_node = [], root
 
         if current_node is not None:
@@ -189,7 +242,6 @@ class BinarySearchTree:
                 listed_nodes += self._list_nodes(root=current_node.right, traversal=traversal)
 
         return listed_nodes
-
 
     def _insert_array(self, array):
         if array:
@@ -226,7 +278,7 @@ class BinarySearchTree:
 
     def _height(self, root):
 
-        if root is None:
+        if not root:
             return 0
 
         height_of_left_subtree, height_of_right_subtree = 0, 0
@@ -254,74 +306,125 @@ class BinarySearchTree:
         else:
             return self._find(root.right, value_searched)
 
+    def find_successor(self):
+        if not self.root:
+            return None
+        else:
+            return self._find_successor(self.root)
+
+    def _find_successor(self, root):
+        if not root:
+            return None
+        elif root.right:
+            r = self._min(root.right, recursive=True, return_value=False)
+            print("_find_successor: returning ", r)
+            return r
+
+    def remove(self, value_to_remove):
+        if not self.root:
+            return False
+        elif not self.find(value_to_remove):
+            return False
+        else:
+            return self._remove(self.root, value_to_remove)
+
+    def _remove(self, root, value_to_remove):
+        if not root:
+            return False
+
+        elif value_to_remove == root.value:
+            # Case 1: Root has no children. Just set node to None
+            if root.left is None and root.right is None:
+                if root.value == self.root.value:
+                    self.root = None
+                else:  # Need the else condition because we don't want to call on parents that don't exist.
+                    if root.value < root.parent.value:
+                        root.parent.left = None
+                    else:
+                        root.parent.right = None
+                return True
+
+            # Case 2a: Root has only one subtree
+            elif root.left and not root.right:
+                if root == self.root:
+                    self.root = root.left
+                else:
+                    root.left.parent = root.parent
+                    if root.left.value > root.parent.value:
+                        root.parent.right = root.left
+                    else:
+                        root.parent.left = root.left
+
+            # Case 2b: Root has only one subtree
+            elif root.right and not root.left:
+                if root == self.root:
+                    self.root = root.right
+                else:
+                    root.right.parent = root.parent
+                    if root.right.value > root.parent.value:
+                        root.parent.right = root.right
+                    else:
+                        root.parent.left = root.right
+
+            elif root.left and root.right:  # Case 3: Root hss two children
+                if not root.right.left:  # Case 3a: Right Subtree has no left branch
+                    root.value = root.right.value
+                    root.right = root.right.right
+                    self._remove(root.right, value_to_remove)
+                else:  # Case 3b: Need to find successor (smallest element in right subtree), swap, and delete
+                    successor = self._find_successor(root)
+                    root.value = successor.value
+
+                    if successor.value < successor.parent.value:
+                        successor.parent.left = None
+                    else:
+                        successor.parent.right = None
+                    successor.parent = None
+
+        elif value_to_remove < root.value:
+            return self._remove(root.left, value_to_remove)
+        else:
+            return self._remove(root.right, value_to_remove)
+
 
 recursive_bst = BinarySearchTree()
 iterative_bst = BinarySearchTree()
 
-unordered_integers = [50, 25, 3, 42, 60, 120, 75]
-ascending_integers = sorted(unordered_integers.copy())
-descending_integers = ascending_integers.copy()[::-1]
-
-print("\n\n")
-
-print("=================================================================")
-print("recursive_bst: {}".format(recursive_bst.list_nodes()))
-print("bst.find(50)\n\tExpected: {}\n\tActual: {}".format(False, recursive_bst.find(50)))
-print("Inserting unordered_integers into recursive_bst")
-
-for val in ascending_integers:
-    recursive_bst.insert(val)
-
-print("recursive_bst: {}".format(recursive_bst.list_nodes(recursive_bst.root)))
-print("bst.find(50)\n\tExpected: {}\n\tActual: {}".format(True, recursive_bst.find(50)))
-
-print("\n")
-
-print("iterative_bst: {}".format(iterative_bst.list_nodes()))
-print("bst.find(50)\n\tExpected: {}\n\tActual: {}".format(False, iterative_bst.find(50)))
-
-print("Inserting unordered_integers into iterative_bst")
-
-for val in ascending_integers:
-    iterative_bst.insert(val)
-
-print("iterative_bst: {}".format(iterative_bst.list_nodes(iterative_bst.root)))
-
-print("bst.find(50)\n\tExpected: {}\n\tActual: {}".format(True, iterative_bst.find(50)))
-print("=================================================================")
-print("\n")
+add_in_this_order = [50, 30, 70, 10, 5, 7, 40, 39, 38, 45, 80, 90, 75]
+remove_in_this_order = [7, 10, 70, 30, 38, 50, 75, 80, 90, 5, 39, 45, 40]
 
 
-"""
-print("\n\n\n")
 
 
-print("=================================================================")
-print("Recursive BST (Before Balancing):")
-pprint_tree(recursive_bst.root)
-print("\t\nHeight: {}".format(recursive_bst.height()))
-print("\n")
-print("Recursive BST (After Balancing):")
-recursive_bst = recursive_bst.get_balanced()
-pprint_tree(recursive_bst.root)
-print("\t\nHeight: {}".format(recursive_bst.height()))
-print("=================================================================")
+for i in range(1):  # range(2):
+    tree, tree_type = (recursive_bst, "recursive_bst") if i == 0 else (iterative_bst, "iterative")
+    print("\n=================================================================")
+    print("{0}: {1}".format(tree_type, tree.list_nodes()))
+    print("=================================================================")
 
-print("\n\n\n")
+    print("\nEmpty Tree\n")
+    tree.pprint_tree(tree.root)
 
-print("=================================================================")
-print("Iterative BST (Before Balancing):")
-pprint_tree(iterative_bst.root)
-print("\t\nHeight: {}".format(iterative_bst.height()))
-print("\n")
-print("Iterative BST (After Balancing):")
-iterative_bst = iterative_bst.get_balanced()
-pprint_tree(iterative_bst.root)
-print("\t\nHeight: {}".format(iterative_bst.height()))
-print("=================================================================")
-print("\n")
+    for elem in add_in_this_order:
+        tree.insert(elem)
 
-"""
+    print("\nFull Tree\n")
+    tree.pprint_tree()
+
+    last_removed = -1
+    for elem in remove_in_this_order[:13]:
+        last_removed = elem
+
+        print("\nBefore removing {}\n".format(last_removed))
+        tree.pprint_tree()
+
+        tree.remove(elem)
+
+        print("\nAfter removing {}\n".format(last_removed))
+        tree.pprint_tree()
+
+
+
 
 
 
