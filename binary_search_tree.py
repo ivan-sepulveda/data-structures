@@ -290,6 +290,28 @@ class BinarySearchTree:
 
         return 1 + max(height_of_left_subtree, height_of_right_subtree)
 
+    def _replace_child(self, child, parent, replacement):
+        if replacement:
+            child.parent = parent
+
+        if child.value < parent.value:
+            parent.left = replacement
+        else:
+            parent.right = replacement
+
+    def _adopt_child(self, child, parent):
+        child.parent = parent
+        if child.value < parent.value:
+            parent.left = child
+        else:
+            parent.right = child
+
+    def _abandon_child(self, child, parent):
+        if child.value < parent.value:
+            parent.left = None
+        else:
+            parent.right = None
+
     def find(self, value_searched):
         if not self.root:
             return False
@@ -316,103 +338,51 @@ class BinarySearchTree:
         if not root:
             return None
         elif root.right:
-            r = self._min(root.right, recursive=True, return_value=False)
-            print("_find_successor: returning ", r)
-            return r
+            return self._min(root.right, recursive=True, return_value=False)
 
     def remove(self, value_to_remove):
         if not self.root:
             return False
-        elif not self.find(value_to_remove):
-            return False
         else:
             return self._remove(self.root, value_to_remove)
 
-    def _remove(self, root, value_to_remove):
+    def _remove(self, root, value):
         if not root:
             return False
 
-        elif value_to_remove == root.value:
-            # Case 1: Root has no children. Just set node to None
-            if root.left is None and root.right is None:
+        elif value == root.value:
+            if root.left is None and root.right is None:  # Case 1: Node has no children. Set pointers to None
                 if root.value == self.root.value:
                     self.root = None
                 else:  # Need the else condition because we don't want to call on parents that don't exist.
-                    if root.value < root.parent.value:
-                        root.parent.left = None
-                    else:
-                        root.parent.right = None
-                return True
+                    self._replace_child(root, root.parent, None)
 
-            elif (root.left and not root.right) or (root.right and not root.left):
-                # Case 2a: Root has only one subtree
-                child = root.left if root.left is not None else root.right
+            elif (root.left and not root.right) or (root.right and not root.left):  # Case 2: Root has only one subtree
+                child = root.left if root.left is not None else root.right  # This variable finds the valid child
                 if root == self.root:
                     self.root = child
                 else:
-                    child.parent = root.parent
-                    if child.value > root.parent.value:
-                        root.parent.right = child
-                    else:
-                        root.parent.left = child
+                    self._replace_child(child, root.parent, child)
 
-
-            elif root.left and root.right:  # Case 3: Root hss two children
+            elif root.left and root.right:  # Case 3: Root has both children
                 if not root.right.left:  # Case 3a: Right Subtree has no left branch
                     root.value = root.right.value
                     root.right = root.right.right
-                    self._remove(root.right, value_to_remove)
-                else:  # Case 3b: Need to find successor (smallest element in right subtree), swap, and delete
+                    self._remove(root.right, value)
+                else:  # Case 3b: Need to find successor (smallest element in right subtree), swap, and update parent
                     successor = self._find_successor(root)
                     root.value = successor.value
+                    self._replace_child(successor, successor.parent, None)
+            self.size -= 1
+            return True
 
-                    if successor.value < successor.parent.value:
-                        successor.parent.left = None
-                    else:
-                        successor.parent.right = None
-                    successor.parent = None
-
-        elif value_to_remove < root.value:
-            return self._remove(root.left, value_to_remove)
-        else:
-            return self._remove(root.right, value_to_remove)
-
-
-recursive_bst = BinarySearchTree()
-iterative_bst = BinarySearchTree()
-
-add_in_this_order = [50, 30, 70, 10, 5, 7, 40, 39, 38, 45, 80, 90, 75]
-remove_in_this_order = [7, 10, 70, 30, 38, 50, 75, 80, 90, 5, 39, 45, 40]
+        elif value < root.value:  # Search Left
+            return self._remove(root.left, value)
+        else:  # Search Right
+            return self._remove(root.right, value)
 
 
 
-
-for i in range(1):  # range(2):
-    tree, tree_type = (recursive_bst, "recursive_bst") if i == 0 else (iterative_bst, "iterative")
-    print("\n=================================================================")
-    print("{0}: {1}".format(tree_type, tree.list_nodes()))
-    print("=================================================================")
-
-    print("\nEmpty Tree\n")
-    tree.pprint_tree(tree.root)
-
-    for elem in add_in_this_order:
-        tree.insert(elem)
-
-    print("\nFull Tree\n")
-    tree.pprint_tree()
-
-    last_removed = -1
-    for elem in remove_in_this_order[:13]:
-        last_removed = elem
-
-        print("\nBefore removing {}\n".format(last_removed))
-        tree.pprint_tree()
-
-        tree.remove(elem)
-
-        print("\nAfter removing {}\n".format(last_removed))
-        tree.pprint_tree()
 
 
 
